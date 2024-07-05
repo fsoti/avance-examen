@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>LET THE DATA DECIDE</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chartist/0.11.4/chartist.min.css" />
+        <link rel="icon" type="image/png" href="https://diseno.uc.cl/favicon.png" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/chartist/0.11.4/chartist.min.js"></script>
+    <style>
+        /* Estilos opcionales para mejorar la apariencia */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: rgb(6, 18, 43);
+            color: whitesmoke;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .row {
+            display: flex;
+            padding: 10px;
+        }
+        .column {
+            flex: 1;
+        }
+        .center {
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .logo {
+            height: 50%; /* Ajusta la altura del logo */
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .description {
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Primera fila -->
+        <div class="row">
+            <div class="column text-start ps-3">
+                <img src="https://diseno.uc.cl/wp-content/themes/dno/img/escuela-de-diseno-uc.svg" alt="Logo" class="logo" />
+            </div>
+            <div class="col-4 title center">
+                LET THE DATA DECIDE
+            </div>
+            <div class="column text-end title pe-3">
+                Dashboard
+            </div>
+        </div>
+
+        <!-- Tercera fila -->
+        <div class="row">
+            <div class="col-3"></div>
+            <div class="col-6 description">
+                En el seminario, debes elegir un/a profesor/a guía para tu titulación en Diseño UC. Este proceso puede ser estresante, según rumores. Esta presentación de datos te ofrecerá cinco opciones de profesores guía, basadas en los
+                parámetros que completes. Si la elección no resulta adecuada, la responsabilidad será de los datos, no tuya.
+            </div>
+
+    <h2 class="text-center">Tabla de Evaluadores y Profesores Guía</h2>
+    <table id="tablaResultados">
+        <!-- Los resultados se llenarán dinámicamente aquí -->
+    </table>
+
+    <script>
+        async function datos() {
+    try {
+        const consulta = await fetch("https://raw.githubusercontent.com/fsoti/Datos-final/main/data.json");
+        const data = await consulta.json();
+
+        // Inicializar contadores y acumuladores
+        let contadorEvaluador = {};
+        let contadorGuia = {};
+        let acumuladorPGA = {};
+        let acumuladorNotaTitulo = {};
+        let acumuladorNotaSeminario = {};
+
+        data.forEach((d) => {
+            // Normalizar nombres de evaluador 1 (convertir a mayúsculas)
+            if (d.nombre_ev_uno) {
+                const nombreEvUno = d.nombre_ev_uno.toUpperCase();
+                if (!contadorEvaluador[nombreEvUno]) {
+                    contadorEvaluador[nombreEvUno] = 0;
+                }
+                contadorEvaluador[nombreEvUno]++;
+            }
+
+            // Normalizar nombres de evaluador 2 (convertir a mayúsculas)
+            if (d.nombre_ev_dos) {
+                const nombreEvDos = d.nombre_ev_dos.toUpperCase();
+                if (!contadorEvaluador[nombreEvDos]) {
+                    contadorEvaluador[nombreEvDos] = 0;
+                }
+                contadorEvaluador[nombreEvDos]++;
+            }
+
+            // Normalizar nombre de guía (convertir a mayúsculas)
+            if (d.nombre_guia) {
+                const nombreGuia = d.nombre_guia.toUpperCase();
+                if (!contadorGuia[nombreGuia]) {
+                    contadorGuia[nombreGuia] = 0;
+                    acumuladorPGA[nombreGuia] = {
+                        suma: 0,
+                        cantidad: 0
+                    };
+                    acumuladorNotaTitulo[nombreGuia] = {
+                        suma: 0,
+                        cantidad: 0
+                    };
+                    acumuladorNotaSeminario[nombreGuia] = {
+                        suma: 0,
+                        cantidad: 0
+                    };
+                }
+                contadorGuia[nombreGuia]++;
+
+                // Convertir y sumar nota_pga si existe (y no es NaN)
+                const notaPGA = d.nota_pga ? parseFloat(d.nota_pga.replace(",", ".")) : NaN;
+                if (!isNaN(notaPGA)) {
+                    acumuladorPGA[nombreGuia].suma += notaPGA;
+                    acumuladorPGA[nombreGuia].cantidad++;
+                }
+
+                // Convertir y sumar nota_titulo si existe (y no es NaN)
+                const notaTitulo = d.nota_titulo ? parseFloat(d.nota_titulo.replace(",", ".")) : NaN;
+                if (!isNaN(notaTitulo)) {
+                    acumuladorNotaTitulo[nombreGuia].suma += notaTitulo;
+                    acumuladorNotaTitulo[nombreGuia].cantidad++;
+                }
+
+                // Convertir y sumar nota_seminario si existe (y no es NaN)
+                const notaSeminario = d.nota_seminario ? parseFloat(d.nota_seminario.replace(",", ".")) : NaN;
+                if (!isNaN(notaSeminario)) {
+                    acumuladorNotaSeminario[nombreGuia].suma += notaSeminario;
+                    acumuladorNotaSeminario[nombreGuia].cantidad++;
+                }
+            }
+        });
+
+        // Calcular promedio de nota_pga para cada guía
+        const promedioPGA = {};
+        Object.keys(acumuladorPGA).forEach((nombre) => {
+            promedioPGA[nombre] = acumuladorPGA[nombre].suma / acumuladorPGA[nombre].cantidad;
+        });
+
+        // Calcular promedio de nota_titulo para cada guía
+        const promedioNotaTitulo = {};
+        Object.keys(acumuladorNotaTitulo).forEach((nombre) => {
+            promedioNotaTitulo[nombre] = acumuladorNotaTitulo[nombre].suma / acumuladorNotaTitulo[nombre].cantidad;
+        });
+
+        // Calcular promedio de nota_seminario para cada guía
+        const promedioNotaSeminario = {};
+        Object.keys(acumuladorNotaSeminario).forEach((nombre) => {
+            promedioNotaSeminario[nombre] = acumuladorNotaSeminario[nombre].suma / acumuladorNotaSeminario[nombre].cantidad;
+        });
+
+        // Ordenar nombres de evaluadores por cantidad de veces que aparecen (de mayor a menor)
+        const evaluadoresOrdenados = Object.keys(contadorEvaluador).sort((a, b) => contadorEvaluador[b] - contadorEvaluador[a]);
+
+        // Mostrar resultados en la tabla HTML
+        mostrarResultados(evaluadoresOrdenados, contadorEvaluador, contadorGuia, promedioPGA, promedioNotaTitulo, promedioNotaSeminario);
+
+    } catch (error) {
+        console.error('Error al cargar los datos:', error);
+    }
+}
+
+function mostrarResultados(evaluadoresOrdenados, contadorEvaluador, contadorGuia, promedioPGA, promedioNotaTitulo, promedioNotaSeminario) {
+    const tabla = document.getElementById('tablaResultados');
+
+    
+    tabla.innerHTML = '';
+
+    
+    const headerRow = tabla.insertRow();
+    const headerEvaluador = headerRow.insertCell();
+    headerEvaluador.textContent = 'Nombre de Evaluador';
+    const headerCantidadEvaluador = headerRow.insertCell();
+    headerCantidadEvaluador.textContent = 'Cantidad como Evaluador';
+    const headerCantidadGuia = headerRow.insertCell();
+    headerCantidadGuia.textContent = 'Cantidad como Guía';
+    const headerPromedioPGA = headerRow.insertCell();
+    headerPromedioPGA.textContent = 'Promedio Nota PGA';
+    const headerPromedioNotaTitulo = headerRow.insertCell();
+    headerPromedioNotaTitulo.textContent = 'Promedio Nota Título';
+    const headerPromedioNotaSeminario = headerRow.insertCell();
+    headerPromedioNotaSeminario.textContent = 'Promedio Nota Seminario';
+
+    // Filas de datos
+    evaluadoresOrdenados.forEach((nombre) => {
+        const row = tabla.insertRow();
+        const cellNombre = row.insertCell();
+        cellNombre.textContent = nombre;
+        const cellCantidadEvaluador = row.insertCell();
+        cellCantidadEvaluador.textContent = contadorEvaluador[nombre] || 0; // Mostrar 0 si no hay conteo
+        const cellCantidadGuia = row.insertCell();
+        cellCantidadGuia.textContent = contadorGuia[nombre] || 0; // Mostrar 0 si no hay conteo
+        const cellPromedioPGA = row.insertCell();
+        cellPromedioPGA.textContent = promedioPGA[nombre] ? promedioPGA[nombre].toFixed(2) : '-'; // Mostrar promedio PGA o '-' si no hay datos
+        const cellPromedioNotaTitulo = row.insertCell();
+        cellPromedioNotaTitulo.textContent = promedioNotaTitulo[nombre] ? promedioNotaTitulo[nombre].toFixed(2) : '-'; // Mostrar promedio Nota Título o '-' si no hay datos
+        const cellPromedioNotaSeminario = row.insertCell();
+        cellPromedioNotaSeminario.textContent = promedioNotaSeminario[nombre] ? promedioNotaSeminario[nombre].toFixed(2) : '-'; // Mostrar promedio Nota Seminario o '-' si no hay datos
+    });
+}
+
+
+datos().catch((error) => console.error(error));
+
+
+
+
+
+
+    </script>
+</body>
+</html>
